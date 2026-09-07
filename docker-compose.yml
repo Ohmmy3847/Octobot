@@ -1,8 +1,11 @@
-version: "3"
-
 services:
   octobot:
     image: drakkarsoftware/octobot:stable
+    dns:
+      - 8.8.8.8
+      - 1.1.1.1
+    environment:
+      - AIOHTTP_NO_EXTENSIONS=1
     volumes:
        - ./logs:/octobot/logs
        - ./backtesting:/octobot/backtesting
