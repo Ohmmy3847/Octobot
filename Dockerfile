@@ -66,10 +66,11 @@ RUN apt-get update \
 
 ENV PATH="/opt/venv/bin:$PATH"
 
-VOLUME /octobot/backtesting
-VOLUME /octobot/logs
-VOLUME /octobot/tentacles
-VOLUME /octobot/user
+# Persistent storage paths (configure Railway Volumes for these paths in Railway dashboard):
+# /octobot/backtesting
+# /octobot/logs
+# /octobot/tentacles
+# /octobot/user
 
 # Node API (OctoBot node mode)
 EXPOSE 8000
