@@ -1,6 +1,10 @@
-FROM python:3.13-slim-trixie AS base
+# ── Stage 1: Build dependencies ─────────────────────────────────────────────
+FROM python:3.13-slim-trixie AS builder
 
-WORKDIR /tmp
+WORKDIR /build
+
+# Skip cryptography rust compilation (required for armv7 builds)
+ENV CRYPTOGRAPHY_DONT_BUILD_RUST=1
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
@@ -18,17 +22,17 @@ RUN apt-get update \
         zlib1g-dev \
     && rm -rf /var/lib/apt/lists/*
 
-# Skip cryptography rust compilation (required for armv7 builds)
-ENV CRYPTOGRAPHY_DONT_BUILD_RUST=1
+# Copy source and install into venv
+COPY . /build/
+COPY extra_requirements.txt /build/
 
-COPY dist/octobot-*.whl /tmp/
-COPY extra_requirements.txt /tmp/
 RUN python -m venv /opt/venv \
     && . /opt/venv/bin/activate \
     && pip install --no-cache-dir --upgrade pip setuptools wheel \
-    && pip install --no-cache-dir /tmp/octobot-*.whl \
-    && pip install --no-cache-dir -r /tmp/extra_requirements.txt
+    && pip install --no-cache-dir -e /build \
+    && pip install --no-cache-dir -r /build/extra_requirements.txt
 
+# ── Stage 2: Runtime image ───────────────────────────────────────────────────
 FROM python:3.13-slim-trixie
 
 ARG TENTACLES_URL_TAG=""
@@ -42,7 +46,7 @@ LABEL maintainer="Drakkar-Software" \
 
 WORKDIR /octobot
 
-COPY --from=base /opt/venv /opt/venv
+COPY --from=builder /opt/venv /opt/venv
 COPY octobot/config /octobot/octobot/config
 COPY start.py /octobot/
 COPY docker/* /octobot/
@@ -78,6 +82,6 @@ EXPOSE 8000
 EXPOSE 5001-5010
 
 HEALTHCHECK --interval=15s --timeout=10s --retries=5 \
-    CMD curl -sS http://127.0.0.1:5001 || exit 1
+    CMD curl -sS http://127.0.0.1:8000 || exit 1
 
 ENTRYPOINT ["./docker-entrypoint.sh"]
